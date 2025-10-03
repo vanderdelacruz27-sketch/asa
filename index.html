@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Will you marry me?</title>
+  <style>
+    :root{--bg:#0f172a;--card:#0b1220;--accent:#ff7aa2;--glass: rgba(255,255,255,0.04)}
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial}
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#071029 0%, #0b1726 60%);color:#e6eef8}
+    .wrap{min-height:100%;display:flex;align-items:center;justify-content:center;padding:32px}
+    .card{width:100%;max-width:760px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:16px;padding:34px;box-shadow:0 10px 30px rgba(2,6,23,0.6);position:relative;overflow:hidden}
+    h1{margin:0 0 8px 0;font-size:36px;letter-spacing:0.6px}
+    p.lead{margin:0 0 22px 0;color:rgba(230,238,248,0.9);font-size:18px}
+    .buttons{display:flex;gap:18px;align-items:center}
+    button{padding:12px 24px;border-radius:999px;border:2px solid rgba(255,255,255,0.06);background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));color:var(--accent);font-weight:700;cursor:pointer;transition:transform 260ms ease, opacity 260ms ease, width 260ms ease, height 260ms ease}
+    button:active{transform:scale(0.98)}
+    #yesBtn{background:linear-gradient(90deg,#ffb3d0,#ff7aa2);color:#081026;border:none}
+    #noBtn{position:relative}
+    .hint{margin-top:12px;color:rgba(230,238,248,0.6);font-size:14px}
+    /* confetti container */
+    .confetti{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+    .confetti .piece{position:absolute;top:-10%;width:10px;height:14px;opacity:0.9;border-radius:2px}
+    @keyframes fall{to{transform:translateY(120vh) rotate(600deg)}}
+    /* modal */
+    .modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,6,23,0.6);opacity:0;pointer-events:none;transition:opacity 240ms ease}
+    .modal.show{opacity:1;pointer-events:auto}
+    .modal .box{background:linear-gradient(180deg,#07162a,#0b1b2a);padding:28px;border-radius:14px;text-align:center;box-shadow:0 12px 40px rgba(2,6,23,0.7)}
+    .modal h2{margin:0 0 12px 0;color:#fff}
+    .modal p{margin:0 0 18px 0;color:rgba(230,238,248,0.85)}
+    .close{background:transparent;border:2px solid rgba(255,255,255,0.06);padding:10px 18px;border-radius:10px;color:#fff}
+    /* small responsive tweak */
+    @media (max-width:520px){h1{font-size:28px}.buttons{flex-direction:column;gap:12px}button{width:100%}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Angel — will you marry me?</h1>
+      <p class="lead">I made this page just for you. Choose wisely ❤️</p>
+
+      <div class="buttons" id="btnArea">
+        <button id="yesBtn">Yes 💍</button>
+        <button id="noBtn">No 😬</button>
+      </div>
+      <p class="hint">(If you click No, it might be... shy.)</p>
+
+      <div class="confetti" id="confetti"></div>
+
+    </div>
+  </div>
+
+  <div class="modal" id="modal">
+    <div class="box">
+      <h2>She said YES! 🎉</h2>
+      <p>Angel, you just made me the happiest person alive.</p>
+      <button class="close" id="closeModal">Close</button>
+    </div>
+  </div>
+
+  <script>
+    const noBtn = document.getElementById('noBtn');
+    const yesBtn = document.getElementById('yesBtn');
+    const btnArea = document.getElementById('btnArea');
+    const modal = document.getElementById('modal');
+    const closeModal = document.getElementById('closeModal');
+    const confettiContainer = document.getElementById('confetti');
+
+    // State for the "running" no button
+    let scale = 1; // starting scale
+    let running = false;
+    let moves = 0;
+    const MAX_MOVES = 12; // after this it will be too small to click
+
+    function randomPositionWithin(parent, elemWidth, elemHeight) {
+      const rect = parent.getBoundingClientRect();
+      const padding = 10; // avoid hugging edges
+      const maxLeft = Math.max(rect.width - elemWidth - padding, padding);
+      const maxTop = Math.max(rect.height - elemHeight - padding, padding);
+      const left = Math.random() * maxLeft;
+      const top = Math.random() * maxTop;
+      return {left, top};
+    }
+
+    function runAwayStep() {
+      moves++;
+      // shrink a bit
+      scale *= 0.86; // shrink rate
+      noBtn.style.transform = `scale(${scale})`;
+      // compute new random position within the card (btnArea's parent)
+      const parent = btnArea.parentElement; // .card
+      const rectBtn = noBtn.getBoundingClientRect();
+      const width = rectBtn.width;
+      const height = rectBtn.height;
+      const pos = randomPositionWithin(parent, width, height);
+      // position using absolute positioning relative to the card
+      noBtn.style.position = 'absolute';
+      noBtn.style.left = `${pos.left}px`;
+      noBtn.style.top = `${pos.top}px`;
+      noBtn.style.transition = 'left 260ms ease, top 260ms ease, transform 260ms ease';
+
+      // once tiny enough or too many moves, disable it
+      if (moves >= MAX_MOVES || scale <= 0.18) {
+        noBtn.style.pointerEvents = 'none';
+        noBtn.style.opacity = '0.45';
+        running = false;
+      }
+    }
+
+    function startRunning() {
+      if (running) return;
+      running = true;
+      // run a few steps in intervals to give the "chasing" effect
+      let steps = 0;
+      const interval = setInterval(() => {
+        steps++;
+        runAwayStep();
+        // increase speed as it gets smaller
+        if (!running || steps > 18) { clearInterval(interval); running = false; }
+        if (noBtn.style.pointerEvents === 'none') { clearInterval(interval); running = false; }
+      }, 190);
+    }
+
+    // When user clicks the No button, start the runaway sequence
+    noBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      startRunning();
+    });
+
+    // Also make it dodge slightly on hover (optional extra fun)
+    noBtn.addEventListener('mouseenter', () => {
+      // only dodge if still interactive
+      if (noBtn.style.pointerEvents === 'none') return;
+      // small immediate move
+      runAwayStep();
+    });
+
+    // Yes button shows modal + confetti
+    yesBtn.addEventListener('click', () => {
+      modal.classList.add('show');
+      burstConfetti();
+    });
+    closeModal.addEventListener('click', () => modal.classList.remove('show'));
+
+    // Confetti generator (simple)
+    function burstConfetti(){
+      const colors = ['#ff7aa2','#ffd28f','#9be6ff','#b8ffb0','#d6b3ff'];
+      // create many pieces
+      for(let i=0;i<60;i++){
+        const piece = document.createElement('div');
+        piece.className = 'piece';
+        const size = 6 + Math.random()*12;
+        piece.style.width = size + 'px';
+        piece.style.height = (size+4) + 'px';
+        piece.style.left = (50 + (Math.random()-0.5)*60) + '%';
+        piece.style.background = colors[Math.floor(Math.random()*colors.length)];
+        piece.style.transform = `rotate(${Math.random()*360}deg)`;
+        piece.style.opacity = 0.95;
+        const delay = Math.random()*0.2;
+        piece.style.animation = `fall ${1.6 + Math.random()*1.5}s cubic-bezier(.2,.7,.2,1) ${delay}s forwards`;
+        piece.style.top = (-10 - Math.random()*10) + '%';
+        confettiContainer.appendChild(piece);
+        // remove after animation
+        setTimeout(()=> piece.remove(), 4000);
+      }
+    }
+
+    // Prevent the noBtn from being tabbable if disabled
+    const observer = new MutationObserver(() => {
+      if (noBtn.style.pointerEvents === 'none') noBtn.tabIndex = -1;
+    });
+    observer.observe(noBtn, {attributes:true,attributeFilter:['style']});
+
+    // small accessibility: press left/right arrows to focus buttons
+    document.addEventListener('keydown', (e)=>{
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        const focusable = [yesBtn, noBtn].filter(b=>b.tabIndex!==-1);
+        if (document.activeElement === yesBtn) noBtn.focus(); else yesBtn.focus();
+      }
+    });
+  </script>
+</body>
+</html>
